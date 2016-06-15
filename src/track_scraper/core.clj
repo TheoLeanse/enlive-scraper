@@ -1,6 +1,8 @@
 (ns track-scraper.core
   (:require [net.cgrand.enlive-html :as enlive]
-            [clojure.string :as str]))
+            [clojure.string :as str]
+            [clj-http.client :as client]
+            [clojure.data.json :as json]))
 
 (def ^:dynamic *base-url* "https://djfriendly.co.uk/stocklist.php?show=")
 
@@ -25,18 +27,46 @@
        (records url *album-selectors*)))
 
 (def artist-album-vectors (map zip-artist-album urls))
+(def record-list (map zip-artist-album urls))
 
-(defn discogs-search
+(defn create-discogs-api-url
   [artist-album]
   (str "https://api.discogs.com/database/search?title=" (apply str artist-album) "&token=" (System/getenv "DISCOGS_TOKEN")))
 
 (defn genre-strings [list-of-vectors]
-  (map discogs-search list-of-vectors))
+  (map create-discogs-api-url list-of-vectors))
 
 (def search-urls-by-section (map genre-strings artist-album-vectors))
 
-(defn search-discogs [url]
-  ;; TODO
-  (url))
+(map #(map client/get %) search-urls-by-section)
 
-(map #(map search-discogs %) search-urls-by-section)
+(->>
+ ["Nirvana" "Nevermind"]
+ (create-discogs-api-url)
+ (client/get)
+ (:body)
+ (#(json/read-str % :key-fn keyword))
+ (:results)
+ (map :title))
+
+(defn get-titles [record]
+  (->> record
+       (create-discogs-api-url)
+       (client/get)
+       (:body)
+       (#(json/read-str % :key-fn keyword))
+       (:results)
+       (map :id)))
+
+(get-titles ["Nirvana" "Nevermind"])
+
+(defn ids-to-videos [id]
+  (->>
+   (client/get (str "https://api.discogs.com/releases/" id))
+   (:body)
+   (#(json/read-str % :key-fn keyword))
+   (:videos)))
+
+(map ids-to-videos (get-titles ["Nirvana" "Nevermind"]))
+
+(map get-titles record-list)

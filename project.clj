@@ -4,4 +4,6 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.clojure/clojure "1.7.0"]
-                 [enlive "1.1.5"]])
+                 [enlive "1.1.5"]
+                 [clj-http "3.1.0"]
+                 [org.clojure/data.json "0.2.6"]])
